@@ -88,6 +88,14 @@
 
 ---
 
+
+
+## 相关项目
+
+- [**remotion-dev/remotion**](https://github.com/remotion-dev/remotion) — Remotion 视频渲染框架，本仓库所有 Remotion 工程生成的底层基础设施
+- [**ConardLi/garden-skills**](https://github.com/ConardLi/garden-skills) — Web Design Engineer 及其他 AI Skill 集合，ReMotionDirector 的指导思想参考
+
+---
 ## 目录结构
 
 ```
@@ -98,17 +106,10 @@ skills/
 │       ├── SKILL.md
 │       └── references/
 │           └── advanced-patterns.md
-├── storyboard-pipeline/               ← 分镜流水线 Skill
-│   ├── SKILL.md
-│   ├── md_table_to_excel.py
-│   └── requirements.txt
-├── remotion/                          ← Remotion 知识参考库
-│   ├── SKILL.md
-│   ├── rules/                         ← 35+ 条最佳实践规则
-│   └── agents/
-└── web-design-engineer/
+└── storyboard-pipeline/               ← 分镜流水线 Skill
     ├── SKILL.md
-    └── references/
+    ├── md_table_to_excel.py
+    └── requirements.txt
 ```
 
 ---
