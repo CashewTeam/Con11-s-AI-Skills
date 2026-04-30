@@ -92,7 +92,6 @@
 
 ```
 skills/
-├── README.md                          ← 本文件
 ├── ReMotionDirector/                  ← 视频动效导演 Skill
 │   ├── SKILL.md
 │   └── copywriting-analyst/
