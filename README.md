@@ -1,6 +1,6 @@
 # AI Skills for Creative Production
 
-本仓库汇集了面向**创意视频制作**的 AI Agent Skill 集合。每个 Skill 都是一个自包含的指令包，赋予 AI 助理特定的专业能力——从文案分析到分镜生成，再到完整的 Remotion 视频工程构建。
+本仓库汇集了面向**创意视频制作**的 AI Agent Skill 集合。每个 Skill 都是一个自包含的指令包，赋予 AI 助理特定的专业能力——从文案分析、分镜生成、字幕制作到完整的 Remotion 视频工程构建。
 
 ---
 
@@ -9,7 +9,9 @@
 - [Skills 概览](#skills-概览)
 - [ReMotionDirector — Remotion 视频动效导演](#remotiondirector--remotion-视频动效导演)
 - [Storyboard Pipeline — 文案一键分镜](#storyboard-pipeline--文案一键分镜)
+- [Subtitle Skill — DaVinci Resolve 自动字幕](#subtitle-skill--davinci-resolve-自动字幕)
 - [快速开始](#快速开始)
+- [相关项目](#相关项目)
 
 ---
 
@@ -19,8 +21,7 @@
 |---|---|---|
 | **ReMotionDirector** | 将创意文案转化为可编程的 Remotion 视频工程，含文案解析、模板匹配、组件生成全流程 | Remotion React/TypeScript 工程 |
 | **Storyboard Pipeline** | 接收文案，自动分词分镜，生成带颜色标注的专业 Excel 分镜表 | `.xlsx` 分镜表文件 |
-
-这两个 Skill 可独立使用，也可串联工作——先用 Storyboard Pipeline 快速可视化镜头节奏，再用 ReMotionDirector 直接生成可编辑的视频工程。
+| **Subtitle Skill** | 自动化 DaVinci Resolve 字幕工作流：音频生成字幕 → 导出 → LLM 优化 → 回导 → 多语言翻译 | `.srt` 字幕文件 |
 
 ---
 
@@ -67,6 +68,26 @@
 
 ---
 
+## Subtitle Skill — DaVinci Resolve 自动字幕
+
+自动化 DaVinci Resolve 的完整字幕工作流：从音频生成字幕 → 导出 SRT → LLM 优化 → 重新导入 → 多语言翻译。
+
+### 工作流程
+
+```
+Resolve 项目 → 音频生成字幕 → 导出原始 SRT → LLM 优化（标点/大小写/断句）→ 导回 Resolve → 翻译为多语言 SRT
+```
+
+**Step 1-3**：通过 Python 脚本与 DaVinci Resolve 脚本 API 交互，一键完成初始化检查、音频字幕生成（支持指定每行字符数）、SRT 导出。
+
+**Step 4**：LLM 读取导出的 SRT，执行多项优化——中文标点标准化、CJK-英文间距调整、技术缩写大写（MCP/API/SRT/FPS 等）、多余标点清理、超长行按时长均分。优化结果直接写为 `.srt` 文件，提供前后对比供用户确认。
+
+**Step 5**：将优化后的 SRT 导回 Resolve——清理旧字幕轨道、导入媒体池、创建新字幕轨道、追加到时间线。
+
+**Step 6（可选）**：基于优化后的字幕，通过 LLM 翻译生成其他语言的 SRT 文件，保持时间码和格式不变。
+
+---
+
 ## 快速开始
 
 ### ReMotionDirector
@@ -86,16 +107,25 @@
 2. 输入文案并指定期望的输出文件名（可选）
 3. AI 自动完成分词、镜头分配、分镜编写，输出带颜色标注的 `.xlsx` 分镜表
 
+### Subtitle Skill
+
+**环境要求**：DaVinci Resolve Studio 18.5+（含内置语音转字幕）、Python 3.8+、DaVinci Resolve MCP Server
+
+1. 在 DaVinci Resolve 中打开包含音频的时间线项目
+2. 配置 `RESOLVE_SCRIPT_API` 环境变量，启动 MCP Server
+3. AI 依次执行：初始化检测 → 音频生成字幕 → 导出原始 SRT → LLM 优化 → 用户确认 → 导回 Resolve
+4. 按需请求翻译为其他语言
+
 ---
-
-
 
 ## 相关项目
 
 - [**remotion-dev/remotion**](https://github.com/remotion-dev/remotion) — Remotion 视频渲染框架，本仓库所有 Remotion 工程生成的底层基础设施
 - [**ConardLi/garden-skills**](https://github.com/ConardLi/garden-skills) — Web Design Engineer 及其他 AI Skill 集合，ReMotionDirector 的指导思想参考
+- [**samuelgursky/davinci-resolve-mcp**](https://github.com/samuelgursky/davinci-resolve-mcp) — DaVinci Resolve MCP Server，Subtitle Skill 与 Resolve 交互的桥梁
 
 ---
+
 ## 目录结构
 
 ```
@@ -106,10 +136,16 @@ skills/
 │       ├── SKILL.md
 │       └── references/
 │           └── advanced-patterns.md
-└── storyboard-pipeline/               ← 分镜流水线 Skill
+├── storyboard-pipeline/               ← 分镜流水线 Skill
+│   ├── SKILL.md
+│   ├── md_table_to_excel.py
+│   └── requirements.txt
+└── ...
+
+Skills/
+└── subtitle-skill/                    ← 字幕自动化 Skill
     ├── SKILL.md
-    ├── md_table_to_excel.py
-    └── requirements.txt
+    └── subtitles_auto.py
 ```
 
 ---
