@@ -150,7 +150,14 @@ The `project_name` is used as `{project_name}` for file names throughout this sk
 
 If the response has a `warning` field (start timecode not `00`-prefixed), warn
 the user: the SRT uses frame-relative timing from `00:00:00,000`, which may be
-misaligned on other platforms. Suggest they use `timeline(action="set_start_timecode", params={"timecode": "00:00:00:00"})` first.
+misaligned on other platforms. **Run `fix-timecode` to reset it:**
+
+```
+{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py fix-timecode
+```
+
+Then re-run `init` to confirm the timecode is now `00:00:00:00` before
+proceeding.
 
 - Exactly **1 timeline**: proceed automatically.
 - **Multiple timelines**: ask the user which one to use, then switch:
@@ -250,7 +257,11 @@ Expected:
 ```bash
 # 1. Init — single command for connection, project name, timelines, start TC
 → {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py init
-→ Project "酷态科", 1 timeline, start TC 00:00:00;00, auto-proceed
+→ Project "酷态科", 1 timeline, start TC 01:00:00;00 (warning)
+
+# 1b. Fix timecode if needed (start TC not 00:00:00:00)
+→ {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py fix-timecode
+→ Re-run init to confirm TC is now 00:00:00:00
 
 # 2. Generate with 24 chars/line
 → {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py generate 24
@@ -309,6 +320,7 @@ Repeat for each language the user requests.
 | `"DaVinci Resolve is not running"` | Resolve closed or scripting disabled | `resolve_control(action="launch")` |
 | `"No project is currently open"` | No project loaded | `project_manager(action="load", ...)` |
 | `"No timeline is currently active"` | Timeline not set | `timeline(action="set_current", ...)` |
+| `start_timecode` not `00`-prefixed | Timeline starts at e.g. `01:00:00:00` | Run `subtitles_auto.py fix-timecode` to reset |
 | `"Failed to generate subtitles"` | No audio / speech not detected | Ensure timeline has audio with speech |
 | `"Failed to import SRT"` | `ImportMedia` returned empty | Check SRT path exists, valid UTF-8 |
 | `"Failed to append subtitles"` | Wrong arg type to `AppendToTimeline` | Pass clip **object**, not clip ID string |
@@ -321,6 +333,7 @@ python subtitles_auto.py <command> [args...]
 Commands:
   init                           Verify connection, get project name, list timelines, check start TC
   version                        Check Resolve version
+  fix-timecode                   Reset timeline start timecode to 00:00:00:00
   list-timelines                 List all timelines
   set-timeline <index>           Switch to timeline by index
   generate [chars_per_line=24]   Generate subtitles from audio

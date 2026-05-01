@@ -115,6 +115,22 @@ def check_version():
     }
 
 
+# ─── Fix Timecode: Reset timeline start timecode to 00:00:00:00 ──────────────
+
+def fix_timecode():
+    tl = _require_timeline()
+    old_tc = tl.GetStartTimecode()
+    result = tl.SetStartTimecode("00:00:00:00")
+    new_tc = tl.GetStartTimecode()
+    if not result or new_tc != "00:00:00:00":
+        raise RuntimeError(f"Failed to set start timecode (was: {old_tc})")
+    return {
+        "success": True,
+        "old_timecode": old_tc,
+        "new_timecode": new_tc,
+    }
+
+
 # ─── Step 2: Timeline Listing ───────────────────────────────────────────────
 
 def list_timelines():
@@ -276,6 +292,7 @@ if __name__ == "__main__":
         print("Commands:")
         print("  init                           Verify connection, get project name, list timelines, check start TC")
         print("  version                        Check Resolve version")
+        print("  fix-timecode                   Reset timeline start timecode to 00:00:00:00")
         print("  list-timelines                 List all timelines")
         print("  set-timeline <index>           Switch to timeline by index")
         print("  generate [chars_per_line=24]   Generate subtitles from audio")
@@ -285,6 +302,7 @@ if __name__ == "__main__":
         print()
         print("Examples:")
         print("  python subtitles_auto.py init")
+        print("  python subtitles_auto.py fix-timecode")
         print("  python subtitles_auto.py generate 24")
         print("  python subtitles_auto.py import-srt ./subtitles.srt")
         sys.exit(1)
@@ -297,6 +315,10 @@ if __name__ == "__main__":
 
     elif command == "version":
         result = check_version()
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+
+    elif command == "fix-timecode":
+        result = fix_timecode()
         print(json.dumps(result, indent=2, ensure_ascii=False))
 
     elif command == "list-timelines":
