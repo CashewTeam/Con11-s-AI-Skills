@@ -1,0 +1,44 @@
+2026-05-01 16:21:05,440 - resolve-mcp - INFO - Starting DaVinci Resolve MCP Server (27 compound tools)
+2026-05-01 16:21:05,453 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2026-05-01 16:24:52,595 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:24:52,595 - resolve-mcp - INFO - Resolve not running, attempting to launch automatically...
+2026-05-01 16:24:52,715 - resolve-mcp - INFO - Launched DaVinci Resolve, waiting for it to respond...
+2026-05-01 16:24:54,718 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:24:56,721 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:24:58,722 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:00,725 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:02,727 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:04,730 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:06,733 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:08,735 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:10,735 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:12,739 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:14,741 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:16,743 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:18,746 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:20,747 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:22,751 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:24,753 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:26,755 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:28,756 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:30,760 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:32,761 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:34,763 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:36,765 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:38,769 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:40,771 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:42,774 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:44,776 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:46,779 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:48,782 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:50,785 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:52,787 - resolve-mcp - ERROR - Cannot import DaVinciResolveScript: initialization of fusionscript failed without raising an exception
+2026-05-01 16:25:52,787 - resolve-mcp - WARNING - Resolve did not respond within 60s after launch
+2026-05-01 16:28:29,793 - resolve-mcp - INFO - Starting DaVinci Resolve MCP Server (27 compound tools)
+2026-05-01 16:28:29,806 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2026-05-01 16:29:02,374 - resolve-mcp - INFO - DaVinciResolveScript module loaded
+2026-05-01 16:29:02,390 - resolve-mcp - INFO - Connected: DaVinci Resolve Studio 20.3.2.9
+2026-05-01 16:30:35,854 - resolve-mcp - INFO - Starting DaVinci Resolve MCP Server (27 compound tools)
+2026-05-01 16:30:35,864 - mcp.server.lowlevel.server - INFO - Processing request of type ListToolsRequest
+2026-05-01 16:33:37,682 - resolve-mcp - INFO - DaVinciResolveScript module loaded
+2026-05-01 16:33:37,689 - resolve-mcp - INFO - Connected: DaVinci Resolve Studio 20.3.2.9
