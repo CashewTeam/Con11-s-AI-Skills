@@ -1,343 +1,365 @@
-# Automatic Subtitle Generation & Optimization — AI Skill
-本技能自动化 DaVinci Resolve 的完整字幕工作流程：
-从音频生成 → 导出 → 使用 LLM 优化 → 重新导入 → 翻译。
-This skill automates the full subtitle workflow in DaVinci Resolve:
-generate from audio → export → optimize with LLM → import back → translate.
+---
+name: "subtitle-skill"
+description: "Generates SRT subtitles from audio using ASR (cloud/local) or forced alignment with reference text. Invoke when user needs speech-to-text subtitles, caption generation, or audio-text alignment for video workflows."
+---
+
+# Subtitle Skill - SRT 字幕生成工具集
+
+覆盖完整字幕工作流：从音频生成 → SRT 校对 → 导入 → 翻译。
+
+## 生成方式选择
+
+在执行字幕生成前，**必须询问用户选择哪种方式**，推荐顺序如下：
+
+| 优先级 | 方式 | 命令 | 适用场景 |
+|--------|------|------|----------|
+| ⭐ **推荐** | **文稿匹配（强制对齐）** | `funasr-srt-tools.py align` | 有精确文稿，字级精准对齐，准确率最高 |
+| 备选 1 | FunASR ASR（云端） | `funasr-srt-tools.py asr` | 有网络，含英文/术语，无需文稿 |
+| 备选 2 | FunASR ASR（本地） | `funasr-srt-tools.py asr --local` | 离线/隐私敏感，快速粗剪 |
+
+### 推荐逻辑
+
+1. **用户有文稿（.txt）** → 推荐 `align`（强制对齐，字级精准）
+2. **用户有网络且无文稿** → 推荐 `asr`（云端 ASR，英文/术语支持好）
+3. **用户需离线或无网络** → 推荐 `asr --local`（本地 ASR）
 
 ---
 
-## Platform Compatibility
-
-This skill is primarily developed on macOS. The helper script `subtitles_auto.py`
-automatically detects the platform via environment variables.
-
-### Python Virtual Environment Path
-
-| Platform | Path |
-|---|---|
-| macOS / Linux | `{MCP_ROOT}/venv/bin/python` |
-| Windows | `{MCP_ROOT}/venv\\Scripts\\python.exe` |
-
-The SKILL.md uses `{MCP_ROOT}/venv/bin/python` as the default. On **Windows**,
-replace it with `{MCP_ROOT}\venv\Scripts\python.exe` and use `\` as the path
-separator throughout.
-
-### Environment Variables
-
-The script reads `RESOLVE_SCRIPT_API` from the environment first. If set, it
-uses that value; otherwise it falls back to the macOS default path.
-
-| Platform | `RESOLVE_SCRIPT_API` |
-|---|---|
-| macOS | `/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting` |
-| Windows | `%PROGRAMDATA%\\Blackmagic Design\\DaVinci Resolve\\Support\\Developer\\Scripting` |
-| Linux | `/opt/resolve/Developer/Scripting` |
-
-Set the environment variable before running any command:
-
-**macOS / Linux:**
-```bash
-export RESOLVE_SCRIPT_API="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
-export RESOLVE_SCRIPT_LIB="/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
-export PYTHONPATH="$RESOLVE_SCRIPT_API/Modules"
-```
-
-**Windows (PowerShell):**
-```powershell
-$env:RESOLVE_SCRIPT_API = "$env:PROGRAMDATA\Blackmagic Design\DaVinci Resolve\Support\Developer\Scripting"
-$env:RESOLVE_SCRIPT_LIB = "C:\Program Files\Blackmagic Design\DaVinci Resolve\fusionscript.dll"
-$env:PYTHONPATH = "$env:PYTHONPATH;$env:RESOLVE_SCRIPT_API\Modules"
-```
-
-### Path Separators
-
-- **Python** (`subtitles_auto.py`): Uses `os.path.join()` throughout, which
-  automatically uses the correct separator (`/` on macOS/Linux, `\` on Windows).
-- **SKILL.md / CLI examples**: Written with `/` for readability. On Windows
-  replace `/` with `\` when typing commands.
-
----
-
-## Directory Structure
-
-All paths in this skill are relative to the **Agent's current working directory (`{CWD}`)**.
-`{MCP_ROOT}` refers to the `davinci-resolve-mcp-main` project directory.
+## 统一工作流程
 
 ```
-{CWD}/
-├── subtitle-skill/            # This skill folder
-│   ├── SKILL.md               # This file
-│   ├── subtitles_auto.py      # Python helper (standalone CLI)
-├── davinci-resolve-mcp-main/  # MCP server (MCP_ROOT)
-│   ├── venv/bin/python        # Virtual env Python
-│   ├── src/server.py          # MCP server entry
-│   └── docs/
-├── {project_name}_subtitles_raw.srt  # Exported (auto-generated)
-├── {project_name}_subtitles_zh_cn.srt        # Cleaned (optimized, Chinese)
+┌─ 询问用户选择生成方式 ─────────────────┐
+│                                         │
+│  ⭐ 推荐: 文稿匹配 (funasr align)       │
+│     备选: FunASR ASR 云端/本地          │
+└─────────────────┬───────────────────────┘
+                  ▼
+          得到一个 SRT 文件
+                  │
+                  ├── ASR 错误太多? ──→ 构建 corrections.json
+                  │                      └── funasr-srt-tools.py convert-srt ...
+                  │
+                  ├── 需要繁/简/港版本? ──→ funasr-srt-tools.py convert-srt ... zh-tw
+                  │
+                  └── 需要翻译? ─────────→ LLM 生成 translation.json
+                                           └── funasr-srt-tools.py apply-corrections ...
 ```
 
 ---
 
-## Required Tooling
+## 工具索引
 
-| Tool | Path |
-|---|---|
-| MCP server | `{MCP_ROOT}/src/server.py` (compound, 27 tools) |
-| Python helper | `subtitle-skill/subtitles_auto.py` |
-| Venv Python | `{MCP_ROOT}/venv/bin/python` |
-| Raw SRT (exported) | `./{project_name}_subtitles_raw.srt` |
-| Optimized SRT | `./{project_name}_subtitles_{lang}.srt` |
+| 脚本 | 路径 | 功能 |
+|------|------|------|
+| `funasr-srt-tools.py` | `subtitle-skill/funasr-srt-tools.py` | ASR 生成、强制对齐、SRT 校对、翻译替换 |
 
 ---
 
-## Running the Helper Script
+## 参考文本优化（LLM 预处理）
 
-All commands use the venv Python and are run from `{CWD}`:
+文稿匹配和校对前，**Agent 应主动帮用户优化参考文本**，解决常见字幕问题：
+
+| 问题 | 说明 | 示例 |
+|------|------|------|
+| **超长语句** | 每行控制在 20-30 字符，按语义拆分为多条 | `"高斯泼溅是一种全新的三维表示方法它通过..."` → 拆分为 2-3 条 |
+| **标点缺失** | 补充缺失的句号、逗号，统一全半角 | `"你好吗我很好"` → `"你好吗？我很好。"` |
+| **去除冗余** | 删除口头禅、重复词 | `"嗯然后呢就是那个高斯泼溅"` → `"高斯泼溅"` |
+| **规范术语** | 统一大小写和专业术语写法 | `"Gaussian splatting"` → `"高斯泼溅"` |
+
+优化后写入临时文件供后续步骤使用：
 
 ```
-{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py <command> [args...]
+./{project_name}_text_optimized.txt
 ```
 
-Environment variables are required (set once per shell session):
+---
+
+## 方式一：文稿匹配（强制对齐） ⭐ 推荐
+
+音频 + 优化后的参考文稿 → 字级精准对齐的 SRT。
 
 ```bash
-export RESOLVE_SCRIPT_API="/Library/Application Support/Blackmagic Design/DaVinci Resolve/Developer/Scripting"
-export RESOLVE_SCRIPT_LIB="/Applications/DaVinci Resolve/DaVinci Resolve.app/Contents/Libraries/Fusion/fusionscript.so"
-export PYTHONPATH="$RESOLVE_SCRIPT_API/Modules"
+python funasr-srt-tools.py align <音频文件> <优化后文稿.txt> [选项]
 ```
-
-Or inline (macOS/Linux):
 
 ```bash
-RESOLVE_SCRIPT_API="..." RESOLVE_SCRIPT_LIB="..." PYTHONPATH="$RESOLVE_SCRIPT_API/Modules" \
-  {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py version
+# 基本用法
+python funasr-srt-tools.py align audio.wav transcript.txt
+python funasr-srt-tools.py align audio.wav transcript.txt -o aligned.srt
 ```
 
-Or inline (Windows PowerShell):
+### 参数
 
-```powershell
-$env:RESOLVE_SCRIPT_API="..."; $env:RESOLVE_SCRIPT_LIB="..."; $env:PYTHONPATH="$env:RESOLVE_SCRIPT_API\Modules"; \
-  {MCP_ROOT}\venv\Scripts\python.exe subtitle-skill/subtitles_auto.py version
-```
+| 参数 | 说明 |
+|------|------|
+| `audio` | 音频文件路径 (WAV/MP3) |
+| `text` | 参考文本文件路径 (TXT) |
+| `-o, --output` | 输出 SRT 路径（默认同音频名 _aligned.srt） |
+| `--model` | 模型名 (默认 fa-zh) |
+| `--device` | 设备 cpu/cuda |
+| `--max-chars` | 每句字数上限 (0=按标点) |
+| `--no-verify` | 不显示预览 |
+
+### 原理
+
+1. 使用 FunASR `fa-zh` 模型对音频 + 文稿做强制对齐
+2. 输出每个字符的 `(开始毫秒, 结束毫秒)`
+3. 按文稿标点断句，生成 SRT
 
 ---
 
-## Step-by-Step Workflow (6 Steps)
+## 方式二：FunASR ASR（云端）
 
-### Step 1: Initialize
+音频 → SRT，无需文稿，适合含英文/术语的场景。
 
-Run the `init` command to verify Resolve is connected, get the current project
-name, list all timelines, and check the start timecode — all in one call:
-
-```
-{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py init
+```bash
+python funasr-srt-tools.py asr <音频文件> [选项]
 ```
 
-Expected response:
+支持语言: `zh`(中文), `en`(英文), `yue`(粤语), `ja`(日语), `ko`(韩语)
+
+```bash
+# 云端模式（默认，推荐含英文术语的场景）
+python funasr-srt-tools.py asr audio.wav
+python funasr-srt-tools.py asr audio.mp3 --lang en --output subtitles.srt
+```
+
+**首次使用云端前配置 API Key** — 编辑同目录下的 `funasr_config.toml`，完整配置项如下：
+```toml
+# 阿里云 DashScope API Key（也可通过环境变量 DASHSCOPE_API_KEY 设置）
+api_key = "sk-你的API密钥"
+model = "fun-asr"
+region = "cn"
+max_words = 0
+lang = "zh"
+align_model = "fa-zh"
+align_device = "cpu"
+audio_sample_rate = 16000
+audio_channels = 1
+ffmpeg_timeout = 300
+transcription_max_retries = 600
+transcription_poll_interval = 2
+convert_srt_default_lang = "zh-cn"
+```
+
+| 配置项 | 默认值 | 说明 |
+|--------|--------|------|
+| `api_key` | — | 阿里云 DashScope API Key |
+| `model` | `"fun-asr"` | 云端 ASR 模型名 |
+| `region` | `"cn"` | 服务区域 (`cn` / `intl`) |
+| `max_words` | `0` | 每句词数上限 (0=按标点) |
+| `lang` | `"zh"` | 默认 ASR 识别语言 |
+| `align_model` | `"fa-zh"` | 强制对齐模型名 |
+| `align_device` | `"cpu"` | 对齐推理设备 |
+| `audio_sample_rate` | `16000` | 音频归一化采样率 |
+| `audio_channels` | `1` | 音频归一化声道数 |
+| `ffmpeg_timeout` | `300` | ffmpeg 处理超时(秒) |
+| `transcription_max_retries` | `600` | 云端 ASR 最大轮询次数 |
+| `transcription_poll_interval` | `2` | 轮询间隔(秒) |
+| `convert_srt_default_lang` | `"zh-cn"` | convert-srt 默认目标语言 |
+
+或设置环境变量 `DASHSCOPE_API_KEY`。
+
+### 参数
+
+| 参数 | 说明 |
+|------|------|
+| `audio` | 音频文件路径 (WAV/MP3/M4A) |
+| `-o, --output` | 输出 SRT 路径（默认同音频名） |
+| `-l, --lang` | 语言 (zh/en/yue/ja/ko) |
+| `-w, --max-words` | 每句词数上限 (0=按标点, >0 加安全上限) |
+| `--no-upload` | 跳过上传，直接使用 audio 参数作为文件 URL |
+| `--no-verify` | 不显示预览 |
+
+---
+
+## 方式三：FunASR ASR（本地）
+
+离线运行，数据不出本机，适合隐私敏感场景。
+
+```bash
+python funasr-srt-tools.py asr <音频文件> --local [选项]
+```
+
+```bash
+# 本地模式（离线，无需 API Key）
+python funasr-srt-tools.py asr audio.wav --local
+python funasr-srt-tools.py asr audio.mp3 --local --model-name SenseVoiceSmall --device cuda
+```
+
+依赖 `pip install funasr`，默认模型 `paraformer-zh`（中文），可选 `SenseVoiceSmall`（多语言）。
+
+### 参数
+
+| 参数 | 说明 |
+|------|------|
+| `audio` | 音频文件路径 (WAV/MP3/M4A) |
+| `-o, --output` | 输出 SRT 路径（默认同音频名） |
+| `-l, --lang` | 语言 (zh/en/yue/ja/ko) |
+| `-w, --max-words` | 每句词数上限 |
+| `--local` | 启用本地模式 |
+| `--model-name` | 本地模型名 (默认 paraformer-zh) |
+| `--device` | 推理设备 cpu/cuda |
+| `--model-dir` | 指定已下载模型目录 |
+| `--no-verify` | 不显示预览 |
+
+---
+
+## `read-srt` — 读取 SRT 文件
+
+将 SRT 解析为结构化 JSON 输出，用于查看条目结构或输入到其他工具。
+
+```bash
+python funasr-srt-tools.py read-srt <srt文件> [选项]
+```
+
+```bash
+# 基本用法
+python funasr-srt-tools.py read-srt subtitles.srt
+
+# 保存为 JSON
+python funasr-srt-tools.py read-srt subtitles.srt --json-output subtitles.json
+```
+
+### 参数
+
+| 参数 | 说明 |
+|------|------|
+| `path` | SRT 文件路径 |
+| `--json-output` | 将解析结果保存为 JSON 文件 |
+| `--no-verify` | 不保存 JSON 输出 |
+
+---
+
+## `convert-srt` — 转换/校对 SRT
+
+对现有 SRT 进行 **ASR 错误修正 + 繁简转换 + CJK 间距修复 + 标点修复**，保留所有时码和条目数。
+
+```bash
+python funasr-srt-tools.py convert-srt <输入.srt> [输出.srt] [语言] [修正.json]
+```
+
+```bash
+# 简体转换
+python funasr-srt-tools.py convert-srt raw.srt output.srt zh-cn
+
+# 繁体 + ASR 修正
+python funasr-srt-tools.py convert-srt raw.srt output.srt zh-tw corrections.json
+
+# 简体 + 修正，省略输出路径（自动为 {输入}_{语言}.srt）
+python funasr-srt-tools.py convert-srt raw.srt --lang zh-cn corrections.json
+```
+
+### 处理流程（4 步）
+
+| 步骤 | 功能 | 说明 |
+|------|------|------|
+| 1 | ASR 错误修正 | 从 corrections.json 读取 `{错误: 正确}` 逐条替换 |
+| 2 | 繁简转换 | 使用 `zhconv` 库转换（zh-cn / zh-tw / zh-hk） |
+| 3 | CJK 间距 | 消除中英文之间多余空格 |
+| 4 | 标点修复 | 全半角统一、省略号规范化、引号转直角引号 |
+
+**核心原则**：时码永远不动，条目数永远不变。
+
+### 参数
+
+| 参数 | 说明 |
+|------|------|
+| `input` | 输入 SRT 文件路径 |
+| `output` | 输出 SRT 路径（默认: `{input}_{lang}.srt`） |
+| `lang` | 目标语言: zh-cn(简体), zh-tw(繁体), zh-hk(香港) |
+| `corrections` | 修正 JSON 文件路径（可选） |
+| `--no-verify` | 不显示预览 |
+
+### corrections.json 格式
+
 ```json
 {
-  "version": {"product": "DaVinci Resolve Studio", "version_string": "20.1.0.20"},
-  "project_name": "MyProject",
-  "timelines": [
-    {"index": 1, "name": "Timeline 1", "start_timecode": "00:00:00;00", ...}
-  ],
-  "current_timeline": "Timeline 1",
-  "start_timecode": "00:00:00;00"
+  "高斯坡键": "高斯泼溅",
+  "微信one": "Vision Pro",
+  "三d": "3D",
+  "四d": "4D"
 }
 ```
 
-The `project_name` is used as `{project_name}` for file names throughout this skill.
-
-If the response has a `warning` field (start timecode not `00`-prefixed), warn
-the user: the SRT uses frame-relative timing from `00:00:00,000`, which may be
-misaligned on other platforms. **Run `fix-timecode` to reset it:**
-
-```
-{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py fix-timecode
-```
-
-Then re-run `init` to confirm the timecode is now `00:00:00:00` before
-proceeding.
-
-- Exactly **1 timeline**: proceed automatically.
-- **Multiple timelines**: ask the user which one to use, then switch:
-
-```
-{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py set-timeline <index>
-```
-
-### Step 2: Generate Subtitles from Audio
-
-Deletes existing subtitle track, creates a fresh one, and runs Resolve's
-speech-to-text with 24 characters per line:
-
-```
-{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py generate 24
-```
-
-Expected:
-```json
-{"success": true, "count": 5, "items": [...]}
-```
-
-### Step 3: Export Subtitles to SRT
-
-Export the generated subtitles to SRT:
-
-```
-{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py export-srt
-```
-
-→ Writes `./{project_name}_subtitles_raw.srt` (project name used as prefix)
-
-### Step 4: LLM Reads, Optimizes, and Writes SRT Directly
-
-Read the exported raw SRT file to get the subtitle content:
-
-```
-{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py read-srt ./{project_name}_subtitles_raw.srt
-```
-
-The response includes `items` (parsed subtitles) and `content` (full SRT text).
-Use the `content` as your source.
-
-**LLM — apply these optimization rules to each subtitle text and write the
-result directly to `./subtitles.srt` using your file writing ability:**
-
-1. **User reference**: If the user provided custom text (e.g. corrected
-   transcript or specific wording per index), use that as the primary source
-   for each matching subtitle index.
-2. **Chinese punctuation**: Replace English `,` between Chinese characters
-   with `，`. Replace English `.` between Chinese characters with `。`.
-3. **CJK-English spacing**: Add a space between Chinese/Japanese/Korean
-   characters and adjacent English letters or numbers.  
-   Example: `达芬奇mcp` → `达芬奇 MCP`, `新的skill` → `新的 Skill`.
-4. **Acronym capitalization**: Capitalize common technical acronyms:
-   `mcp` → `MCP`, `api` → `API`, `srt` → `SRT`, `fps` → `FPS`,
-   `hdr` → `HDR`, `sdr` → `SDR`, `lut` → `LUT`, `ai` → `AI`, `ml` → `ML`.
-5. **Remove redundant punctuation**: Remove duplicate consecutive punctuation,
-   strip leading/trailing punctuation marks and whitespace.
-6. **Line splitting**: If a single subtitle text exceeds ~60 characters
-   (roughly 30 CJK chars or 60 Latin chars), split it into two consecutive
-   subtitle entries. Divide the original duration evenly between the two new
-   entries and adjust their timecodes accordingly. Re-number all entries.
-
-**Write the optimized SRT as `./{project_name}_subtitles_{lang}.srt`** — preserve the exact SRT
-format (index, timecode line with `-->`, text line, blank line separator).
-Do NOT call `clean-srt`; you are responsible for the full output. The `{lang}`
-default is `zh_cn` for Chinese subtitles from Resolve's auto-caption.
-
-Show the user a before/after summary of changes and ask for confirmation
-before proceeding.
-
-### Step 5: Import Optimized SRT Back
-
-Once confirmed:
-
-```
-{MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py import-srt ./{project_name}_subtitles_{lang}.srt
-```
-
-This:
-1. Cleans old SRT clips from Media Pool
-2. Deletes current subtitle track
-3. `ImportMedia` → imports SRT into Media Pool
-4. `AddTrack("subtitle")` → creates fresh subtitle track
-5. `AppendToTimeline([clip_object])` → appends using clip **object** (NOT clip ID string — critical!)
-
-Expected:
-```json
-{"success": true, "count": 5, "items": [{"start": 18, "end": 69, "text": "你好你好，这是一个用于测试"}, ...]}
-```
+> 构建 `corrections.json` 时，Agent 可同时结合 LLM 优化文本（拆分超长语句、补充标点、去除冗余），将优化后的文本作为正确值写入修正文件。
 
 ---
 
-## Complete Workflow Example
+## `apply-corrections` — 翻译替换
+
+保留所有时码，仅对文本进行纯文本替换。用于 **翻译场景**：
+
+1. LLM 读取 SRT 文本 → 生成 `{原文: 译文}` 的 JSON
+2. 此命令应用修正，输出翻译后的 SRT
 
 ```bash
-# 1. Init — single command for connection, project name, timelines, start TC
-→ {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py init
-→ Project "酷态科", 1 timeline, start TC 01:00:00;00 (warning)
+python funasr-srt-tools.py apply-corrections <输入.srt> <输出.srt> <修正.json>
+```
 
-# 1b. Fix timecode if needed (start TC not 00:00:00:00)
-→ {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py fix-timecode
-→ Re-run init to confirm TC is now 00:00:00:00
+```bash
+python funasr-srt-tools.py apply-corrections zh.srt en.srt translation.json
+```
 
-# 2. Generate with 24 chars/line
-→ {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py generate 24
+### parameters
 
-# 3. Export SRT
-→ {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py export-srt
+| 参数 | 说明 |
+|------|------|
+| `input` | 输入 SRT 文件路径 |
+| `output` | 输出 SRT 路径 |
+| `corrections` | 修正 JSON 文件路径 ({原文: 译文}) |
+| `--no-verify` | 不显示预览 |
 
-# 4. Read raw SRT
-→ {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py read-srt ./{project_name}_subtitles_raw.srt
-→ Ask user for corrections
+### translation.json 格式
 
-# 5. LLM applies optimization rules and writes ./{project_name}_subtitles_{lang}.srt directly
-→ Write file: ./{project_name}_subtitles_{lang}.srt
-
-# 6. Show changes, confirm with user
-→ Read ./{project_name}_subtitles_{lang}.srt, present before/after diff
-
-# 7. Import back
-→ {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py import-srt ./{project_name}_subtitles_{lang}.srt
-
-# 8. (Optional) Ask user → translate → write SRT files for other languages
-→ Repeat Step 7 for each language requested
+```json
+{
+  "如果你近段时间有关注三维技术和计算机图形学的发展": "If you've been following 3D technology and computer graphics lately",
+  "我想你已经听说过高斯泼溅了": "you've probably heard of Gaussian Splatting"
+}
 ```
 
 ---
 
-### Step 6: Generate Other Language SRTs via LLM Translation
+## 完整工作流程示例
 
-After the optimized subtitles are imported, **ask the user** if they want to
-generate subtitles in other languages.
+### 方法 A：文稿匹配（推荐）
 
-If yes, for each requested language:
+```bash
+# 0. 用 LLM 优化参考文本（拆分长句、修正标点、去除冗余）
+#    写入 project_text_optimized.txt
 
-1. **Read the optimized SRT** to get the source text and timecodes:
-   ```
-   {MCP_ROOT}/venv/bin/python subtitle-skill/subtitles_auto.py read-srt ./{project_name}_subtitles_{lang}.srt
-   ```
-   (Use the existing `{lang}` optimized file, e.g. `zh_cn`.)
+# 1. 强制对齐生成字幕
+python funasr-srt-tools.py align audio.wav project_text_optimized.txt -o project_subtitles_raw.srt
 
-2. **LLM translates** each subtitle text to the target language while keeping
-   the timecodes, index numbers, and SRT format exactly the same. Only the text
-   line changes.
+# 2. 读取并检查
+python funasr-srt-tools.py read-srt project_subtitles_raw.srt
 
-3. **Write the translated SRT** as `./{project_name}_subtitles_{target_lang}.srt`
-   using your file writing ability. The translated file is saved to disk for the
-   user to use later.
+# 3. 结合优化后的文本构建 corrections.json → 转换
+python funasr-srt-tools.py convert-srt project_subtitles_raw.srt project_subtitles_zh_cn.srt zh-cn corrections.json
+```
 
-Repeat for each language the user requests.
+### 翻译（任一种方法生成后）
+
+```bash
+# LLM 生成 translation.json
+python funasr-srt-tools.py apply-corrections project_subtitles_zh_cn.srt project_subtitles_en.srt translation.json
+```
 
 ---
 
-## Error Handling
+## 依赖安装
 
-| Error | Likely cause | Fix |
-|---|---|---|
-| `"DaVinci Resolve is not running"` | Resolve closed or scripting disabled | `resolve_control(action="launch")` |
-| `"No project is currently open"` | No project loaded | `project_manager(action="load", ...)` |
-| `"No timeline is currently active"` | Timeline not set | `timeline(action="set_current", ...)` |
-| `start_timecode` not `00`-prefixed | Timeline starts at e.g. `01:00:00:00` | Run `subtitles_auto.py fix-timecode` to reset |
-| `"Failed to generate subtitles"` | No audio / speech not detected | Ensure timeline has audio with speech |
-| `"Failed to import SRT"` | `ImportMedia` returned empty | Check SRT path exists, valid UTF-8 |
-| `"Failed to append subtitles"` | Wrong arg type to `AppendToTimeline` | Pass clip **object**, not clip ID string |
+```bash
+# 云端 ASR
+pip install dashscope
 
-## CLI Reference
+# 本地 ASR / 强制对齐
+pip install funasr torch
 
-```
-python subtitles_auto.py <command> [args...]
+# SRT 校对（繁简转换）
+pip install zhconv
 
-Commands:
-  init                           Verify connection, get project name, list timelines, check start TC
-  version                        Check Resolve version
-  fix-timecode                   Reset timeline start timecode to 00:00:00:00
-  list-timelines                 List all timelines
-  set-timeline <index>           Switch to timeline by index
-  generate [chars_per_line=24]   Generate subtitles from audio
-  export-srt [output_path]       Export subtitles to SRT (default: ./<project>_subtitles_raw.srt)
-  read-srt <path>                Read and parse SRT file
-  import-srt <srt_path>          Import SRT back to timeline as subtitle track
+# 音频预处理（自动调用 ffmpeg）
+# 需要系统中已安装 ffmpeg
 ```

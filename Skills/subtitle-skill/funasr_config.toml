@@ -1,0 +1,38 @@
+# 阿里云 DashScope API Key（也可通过环境变量 DASHSCOPE_API_KEY 设置）
+api_key = "sk-d330351c4c864b10a3e80b522f5d3a8e"
+
+# 云端 ASR 模型名
+model = "fun-asr"
+
+# 服务区域: "cn" 国内 | "intl" 国际
+region = "cn"
+
+# 每句词数上限（0=按标点断句）
+max_words = 0
+
+# ASR 识别默认语言: zh/en/yue/ja/ko
+lang = "zh"
+
+# 强制对齐模型名
+align_model = "fa-zh"
+
+# 对齐推理设备: cpu/cuda
+align_device = "cpu"
+
+# 音频预处理采样率
+audio_sample_rate = 16000
+
+# 音频预处理声道数
+audio_channels = 1
+
+# ffmpeg 处理超时（秒）
+ffmpeg_timeout = 300
+
+# 云端转录最大轮询次数（×轮询间隔=总超时）
+transcription_max_retries = 600
+
+# 云端转录轮询间隔（秒）
+transcription_poll_interval = 2
+
+# convert-srt 默认目标语言: zh-cn/zh-tw/zh-hk
+convert_srt_default_lang = "zh-cn"
